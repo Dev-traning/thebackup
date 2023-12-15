@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Function to perform backup
+perform_backup() {
+    project_folder=$1
+    backup_folder=$2
+    timestamp=$(date +"%Y%m%d%H%M%S")
+    backup_path="${backup_folder}/backup_${timestamp}"
+
+    # Ensure the backup folder exists
+    mkdir -p "${backup_folder}"
+
+    # Copy project files to the backup folder
+    cp -r "${project_folder}" "${backup_path}"
+
+    echo "Backup created successfully at: ${backup_path}"
+}
+
+# Function to rotate backups
+rotate_backups() {
+    backup_folder=$1
+    max_backups=$2
+
+    # List all backups in the folder sorted by modification time
+    backups=($(ls -t "${backup_folder}"))
+
+    # Remove excess backups to maintain the desired number
+    for ((i = max_backups; i < ${#backups[@]}; i++)); do
+        backup_to_remove="${backup_folder}/${backups[i]}"
+        rm -rf "${backup_to_remove}"
+        echo "Removed old backup: ${backup_to_remove}"
+    done
+}
+
+# Function to commit and push changes
+commit_and_push() {
+    project_folder=$1
+    commit_message="Automated backup and rotation"
+
+    # Change working directory to the project folder
+    cd "${project_folder}" || exit
+
+    # Add all files to the staging area
+    git add .
+
+    # Commit the changes
+    git commit -m "${commit_message}"
+
+    # Push the changes to the remote repository
+    git push
+
+    echo "Changes committed and pushed to the remote repository."
+}
+
+# Main function
+main() {
+    project_folder="/var/www/html/Delight/Uat/backend"
+    backup_folder="/var/www/html/backup"  # Replace with your desired backup folder
+    max_backups=${3:-5}
+
+    # Perform backup
+    perform_backup "${project_folder}" "${backup_folder}"
+
+    # Rotate backups
+    rotate_backups "${backup_folder}" "${max_backups}"
+
+    # Commit and push changes
+    commit_and_push "${project_folder}"
+}
+
+# Call the main function
+main
